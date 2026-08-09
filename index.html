@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <title>智慧微電網控制面板</title>
+    <style>
+        /* 基礎排版：左右滿版配置 */
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f6f9;
+            height: 100vh;
+            /* 讓畫面剛好滿版，不出現捲軸 */
+            gap: 20px;
+            transition: background-color 0.6s ease;
+        }
+
+        /* ========================================== */
+        /* 夜間模式 - 整個網頁場景變暗 */
+        /* ========================================== */
+        body.night-mode {
+            background-color: #1a1a2e;
+        }
+
+        body.night-mode .panel-section {
+            background: #16213e;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        body.night-mode .panel-section h3 {
+            color: #e0e0e0;
+            border-bottom-color: #2a2a4a;
+        }
+
+        body.night-mode .slider-group label {
+            color: #bbb;
+        }
+
+        body.night-mode .mode-btn {
+            color: #ddd;
+        }
+
+        body.night-mode .btn-yellow {
+            background: #3d3520;
+            border-color: #5a4f2a;
+        }
+
+        body.night-mode .btn-yellow:hover {
+            background: #5a4f2a;
+        }
+
+        body.night-mode .btn-green {
+            background: #1a3328;
+            border-color: #2a5040;
+        }
+
+        body.night-mode .btn-green:hover {
+            background: #2a5040;
+        }
+
+        /* 夜間模式 - Unity 3D 場景天空變暗遮罩 */
+        /* 移除原先的夜間 HTML 遮罩，交由 Unity 原生的光影來處理，這樣燈光才會清晰 */
+
+        /* ========================================== */
+        /* 1. 解決畫質模糊的終極排版法 */
+        /* ========================================== */
+        #unity-container {
+            flex: 1;
+            /* 自動填滿左側剩餘空間 */
+            background: #231F20;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            position: relative;
+            /* 關鍵！讓內部的 Canvas 可以絕對定位 */
+        }
+
+        #unity-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* ========================================== */
+        /* 右側控制面板整體設定 */
+        /* ========================================== */
+        #ui-panel {
+            width: 380px;
+            /* 固定右側寬度 */
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
+            /* 內容太多時可以在右邊滑動 */
+            padding-right: 5px;
+        }
+
+        .panel-section {
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        .panel-section h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 16px;
+            color: #333;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        /* ========================================== */
+        /* 2. 手機截圖 Blynk 畫面 */
+        /* ========================================== */
+        .phone-mockup {
+            width: 100%;
+            max-width: 200px;
+            /* 控制手機大小 */
+            margin: 0 auto;
+            border: 6px solid #333;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+            position: relative;
+            background: #fff;
+        }
+
+        .phone-notch {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40%;
+            height: 12px;
+            background: #333;
+            border-bottom-left-radius: 8px;
+            border-bottom-right-radius: 8px;
+        }
+
+        .phone-mockup img {
+            width: 100%;
+            display: block;
+            margin-top: 15px;
+            /* 避開瀏海 */
+        }
+
+        /* ========================================== */
+        /* 新增：手機畫面上的電池貼紙 */
+        /* ========================================== */
+        #blynk-battery-badge {
+            position: absolute;
+            top: 64%;
+            /* 📍 垂直位置：大約在 64% 的高度 */
+            left: 15%;
+            /* 📍 水平位置 */
+            background-color: white;
+            /* 白底 */
+            color: #e74c3c;
+            /* 紅字 */
+            font-size: 13px;
+            font-weight: bold;
+            padding: 3px 8px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+            pointer-events: none;
+            /* 讓滑鼠點擊可以穿透 */
+        }
+
+        /* ========================================== */
+        /* 新增：手機畫面上的 ON/OFF 可點擊按鈕 */
+        /* ========================================== */
+        #blynk-on-btn {
+            position: absolute;
+            top: 28%;
+            /* 📍 可微調上下位置 */
+            right: 7%;
+            /* 📍 可微調左右位置 */
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: none;
+            background-color: #2ecc71;
+            /* 預設綠色 = ON */
+            color: white;
+            font-size: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            z-index: 5;
+        }
+
+        #blynk-on-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+        }
+
+        #blynk-on-btn:active {
+            transform: scale(0.95);
+        }
+
+        #blynk-on-btn.off {
+            background-color: #e74c3c;
+            /* 紅色 = OFF */
+        }
+
+        /* ========================================== */
+        /* 3. 六個決策模式 (使用 Grid 漂亮排版) */
+        /* ========================================== */
+        .mode-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            /* 左右各一半 */
+            gap: 10px;
+        }
+
+        .mode-btn {
+            padding: 10px 5px;
+            font-size: 13px;
+            font-weight: bold;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: 0.2s;
+            color: #333;
+        }
+
+        /* 參照你的圖片幫按鈕上色 */
+        .btn-yellow {
+            background: #fff3cd;
+            border: 1px solid #ffe69c;
+        }
+
+        .btn-yellow:hover {
+            background: #ffe69c;
+        }
+
+        .btn-green {
+            background: #d1e7dd;
+            border: 1px solid #a3cfbb;
+        }
+
+        .btn-green:hover {
+            background: #a3cfbb;
+        }
+
+        /* ========================================== */
+        /* 4. 環境參數模擬 (拉桿) */
+        /* ========================================== */
+        .slider-group {
+            margin-bottom: 15px;
+        }
+
+        .slider-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .slider-group label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            color: #555;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+        }
+
+        /* ========================================== */
+        /* 5. 日夜切換按鈕 */
+        /* ========================================== */
+        .daynight-toggle-group {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+
+        .daynight-toggle-group .toggle-label {
+            font-size: 13px;
+            color: #555;
+            font-weight: bold;
+            transition: color 0.3s;
+        }
+
+        body.night-mode .daynight-toggle-group .toggle-label {
+            color: #bbb;
+        }
+
+        .daynight-toggle-group .toggle-status {
+            font-size: 12px;
+            color: #888;
+            margin-left: 6px;
+            transition: color 0.3s;
+        }
+
+        body.night-mode .daynight-toggle-group .toggle-status {
+            color: #aaa;
+        }
+
+        /* iOS 風格 Toggle Switch */
+        .toggle-switch {
+            position: relative;
+            width: 52px;
+            height: 28px;
+            flex-shrink: 0;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #f0c040;
+            /* 白天 = 黃色（太陽色） */
+            border-radius: 28px;
+            transition: 0.4s;
+        }
+
+        .toggle-slider::before {
+            content: '☀️';
+            position: absolute;
+            height: 22px;
+            width: 22px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            border-radius: 50%;
+            transition: 0.4s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+        }
+
+        .toggle-switch input:checked+.toggle-slider {
+            background-color: #2c3e6b;
+            /* 晚上 = 深藍色 */
+        }
+
+        .toggle-switch input:checked+.toggle-slider::before {
+            transform: translateX(24px);
+            content: '🌙';
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- 左側：Unity 3D 畫面 -->
+    <div id="unity-container">
+        <canvas id="unity-canvas" tabindex="-1"></canvas>
+    </div>
+
+    <!-- 右側：控制面板 -->
+    <div id="ui-panel">
+
+        <!-- 區塊一：手機 Blynk 畫面 -->
+        <div class="panel-section">
+            <h3>雲端物聯網 (Blynk)</h3>
+            <div class="phone-mockup">
+                <div class="phone-notch"></div>
+                <img src="image_01eabf.png" alt="Blynk UI" id="blynk-img">
+
+                <!-- 新增的電池電量小貼紙 -->
+                <div id="blynk-battery-badge">50%</div>
+
+                <!-- 新增的 ON/OFF 可點擊按鈕 -->
+                <button id="blynk-on-btn" onclick="toggleBlynkPower()">ON</button>
+            </div>
+        </div>
+
+        <!-- 區塊二：六個決策模式 -->
+        <div class="panel-section">
+            <h3>系統模式切換</h3>
+            <div class="mode-grid">
+                <button class="mode-btn btn-yellow" onclick="setMode(1)">日間溢出利用</button>
+                <button class="mode-btn btn-green" onclick="setMode(2)">日間強制儲能</button>
+                <button class="mode-btn btn-yellow" onclick="setMode(3)">夜間放電模式</button>
+                <button class="mode-btn btn-green" onclick="setMode(6)">緊急用電模式</button>
+                <button class="mode-btn btn-yellow" onclick="setMode(5)">低電保護模式</button>
+                <button class="mode-btn btn-green" onclick="setMode(4)">陰雨預警模式</button>
+            </div>
+            
+            <!-- 新增：燈光顏色圖例註解 -->
+            <div style="margin-top: 15px; padding-top: 12px; border-top: 1px dashed #ddd; font-size: 13px; color: #555; display: flex; justify-content: center; gap: 15px;">
+                <span style="display: flex; align-items: center; gap: 5px;">
+                    <div style="width: 12px; height: 12px; border-radius: 50%; background-color: #2ecc71; box-shadow: 0 0 5px #2ecc71;"></div> 太陽能供電
+                </span>
+                <span style="display: flex; align-items: center; gap: 5px;">
+                    <div style="width: 12px; height: 12px; border-radius: 50%; background-color: #fff; border: 1px solid #ccc; box-shadow: 0 0 5px #ddd;"></div> 傳統電網
+                </span>
+            </div>
+
+            <!-- 新增：系統狀態提示字 -->
+            <div id="systemStatusText" style="margin-top: 15px; padding: 12px; background-color: #f8f9fa; border-radius: 8px; font-size: 13.5px; color: #2c3e50; font-weight: bold; text-align: left; border-left: 5px solid #95a5a6; transition: 0.3s; line-height: 1.4;">
+                💡 系統狀態：一般待機模式，目前主要由傳統電網供電。
+            </div>
+        </div>
+
+        <!-- 區塊三：環境參數模擬 -->
+        <div class="panel-section">
+            <h3>環境參數模擬</h3>
+
+            <div class="daynight-toggle-group">
+                <div>
+                    <span class="toggle-label">☀️ 日 / 夜 🌙</span>
+                    <span class="toggle-status" id="daynightStatus">（目前：白天）</span>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="daynightToggle">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+
+            <div class="slider-group">
+                <label><span>模擬時間</span> <span id="timeValue">12:00</span></label>
+                <!-- min 0, max 1440 代表一天的總分鐘數 -->
+                <input type="range" id="timeSlider" min="0" max="1440" value="720">
+            </div>
+
+            <div class="slider-group">
+                <label><span>降雨機率</span> <span id="rainValue">0%</span></label>
+                <input type="range" id="rainSlider" min="0" max="100" value="0">
+            </div>
+
+            <div class="slider-group">
+                <label><span>電池電量</span> <span id="batteryValue">50%</span></label>
+                <input type="range" id="batterySlider" min="0" max="100" value="50">
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ========================================== -->
+    <!-- Unity 啟動腳本與控制邏輯 -->
+    <!-- ========================================== -->
+    <script>
+        var buildUrl = "Build";
+        var loaderUrl = buildUrl + "/Web_V2.loader.js";
+        var config = {
+            arguments: [],
+            dataUrl: buildUrl + "/Web_V2.data",
+            frameworkUrl: buildUrl + "/Web_V2.framework.js",
+            codeUrl: buildUrl + "/Web_V2.wasm",
+            streamingAssetsUrl: "StreamingAssets",
+            companyName: "DefaultCompany",
+            productName: "Solar_Microgrid_3D",
+            productVersion: "0.1.0",
+            matchWebGLToCanvasSize: true,
+            devicePixelRatio: window.devicePixelRatio
+        };
+
+        var unityCanvas = document.querySelector("#unity-canvas");
+        var myUnityInstance = null;
+
+        // 動態載入 Unity Loader 腳本
+        var script = document.createElement("script");
+        script.src = loaderUrl;
+        script.onload = () => {
+            createUnityInstance(unityCanvas, config).then((unityInstance) => {
+                myUnityInstance = unityInstance;
+                console.log("Unity 載入成功！");
+                
+                // Unity 載入完成後，先手動呼叫一次 checkSystemState 來初始化燈光
+                checkSystemState();
+            }).catch((message) => {
+                alert(message);
+            });
+        };
+        document.body.appendChild(script);
+
+        // --- 智慧微電網核心邏輯 (State Machine) ---
+        var currentManualMode = 0; // 紀錄使用者目前點擊的模式 (0代表無)
+        var blynkPowerOn = true;
+        var lastBattery = 50;
+        var lastRain = 0;
+
+        function checkSystemState(manualClick = 0) {
+            let isDay = !document.getElementById("daynightToggle").checked;
+            let battery = parseInt(document.getElementById("batterySlider").value);
+            let rainProb = parseInt(document.getElementById("rainSlider").value);
+
+            // 手動點擊模式按鈕
+            if (manualClick > 0) {
+                if (currentManualMode === manualClick) {
+                    currentManualMode = 0; // 再按一次取消
+                } else {
+                    currentManualMode = manualClick;
+                }
+            }
+
+            // 檢查目前的模式是否符合觸發條件（若不符則自動取消）
+            if (currentManualMode === 1 && (!isDay || battery < 90)) currentManualMode = 0;
+            if (currentManualMode === 2 && (!isDay || battery < 20 || battery > 89)) currentManualMode = 0;
+            if (currentManualMode === 3 && isDay) currentManualMode = 0;
+            if (currentManualMode === 4 && rainProb <= 70) currentManualMode = 0;
+            if (currentManualMode === 5 && battery >= 20) currentManualMode = 0;
+            // Mode 6 (緊急用電) 無條件限制，隨時可開關
+
+            let targetMode = currentManualMode;
+
+            // --- UI 亮燈與按鈕狀態更新 ---
+            let blynkBtn = document.getElementById('blynk-on-btn');
+            if (targetMode === 6) {
+                blynkPowerOn = true;
+                blynkBtn.textContent = 'ON';
+                blynkBtn.classList.remove('off');
+            } else {
+                blynkPowerOn = false;
+                blynkBtn.textContent = 'OFF';
+                blynkBtn.classList.add('off');
+            }
+
+            // 更新 6 個模式按鈕的高亮
+            let modeBtns = document.querySelectorAll('.mode-btn');
+            modeBtns.forEach((btn, index) => {
+                let modeId;
+                if(index===0) modeId=1;
+                else if(index===1) modeId=2;
+                else if(index===2) modeId=3;
+                else if(index===3) modeId=6;
+                else if(index===4) modeId=5;
+                else if(index===5) modeId=4;
+
+                if (modeId === targetMode) {
+                    btn.style.boxShadow = "0 0 12px rgba(52, 152, 219, 0.6)"; 
+                    btn.style.border = "2px solid #3498db";
+                } else {
+                    btn.style.boxShadow = "none";
+                    btn.style.border = "";
+                }
+            });
+
+            // --- 更新系統狀態提示文字 ---
+            let statusBox = document.getElementById("systemStatusText");
+            if (targetMode === 5) {
+                statusBox.innerHTML = "💡 系統提示：電池電量過低 (&lt;20%)，已啟動低電保護，全面切換為傳統電網。";
+                statusBox.style.borderLeftColor = "#e74c3c"; // 紅色
+            } else if (targetMode === 4) {
+                statusBox.innerHTML = "💡 系統提示：陰雨機率過高 (&gt;70%)，保留主要照明，其餘切換為傳統電網。";
+                statusBox.style.borderLeftColor = "#f39c12"; // 橘色
+            } else if (targetMode === 1) {
+                statusBox.innerHTML = "💡 系統提示：陽光充足且電量滿載，已啟動日間溢出利用，全面使用太陽能。";
+                statusBox.style.borderLeftColor = "#2ecc71"; // 綠色
+            } else if (targetMode === 2) {
+                statusBox.innerHTML = "💡 系統提示：日間充電中，已啟動強制儲能，全面使用傳統電網。";
+                statusBox.style.borderLeftColor = "#3498db"; // 藍色
+            } else if (targetMode === 3) {
+                statusBox.innerHTML = "💡 系統提示：夜間放電模式，全面使用太陽能供電。";
+                statusBox.style.borderLeftColor = "#2ecc71"; // 綠色
+            } else if (targetMode === 6) {
+                statusBox.innerHTML = "💡 系統提示：緊急用電模式啟動！僅保留重要照明，其餘切換為傳統電網。";
+                statusBox.style.borderLeftColor = "#e74c3c"; // 紅色
+            } else {
+                statusBox.innerHTML = "💡 系統狀態：一般待機模式，目前主要由傳統電網供電。";
+                statusBox.style.borderLeftColor = "#95a5a6"; // 灰色
+            }
+
+            // --- 計算燈光並發送給 Unity ---
+            let lights = "W,W,W,W,W"; 
+            if (targetMode === 1 || targetMode === 3) {
+                lights = "G,G,G,G,G"; 
+            } else if (targetMode === 2 || targetMode === 5) {
+                lights = "W,W,W,W,W"; 
+            } else if (targetMode === 4 || targetMode === 6) {
+                lights = "G,G,W,W,W"; 
+            }
+
+            if (myUnityInstance != null) {
+                myUnityInstance.SendMessage('WeatherController', 'ChangeMode', targetMode);
+                myUnityInstance.SendMessage('WeatherController', 'SetAllLights', lights);
+            }
+        }
+
+        // --- 使用者介面互動事件 ---
+        function setMode(modeId) {
+            checkSystemState(modeId);
+        }
+
+        function toggleBlynkPower() {
+            if (currentManualMode === 6) checkSystemState(6);
+            else checkSystemState(6);
+        }
+
+        document.getElementById("daynightToggle").onchange = function () {
+            let isNight = this.checked;
+            let statusText = document.getElementById("daynightStatus");
+            if (isNight) {
+                document.body.classList.add('night-mode');
+                statusText.innerText = '（目前：夜晚）';
+                if (myUnityInstance != null) myUnityInstance.SendMessage('WeatherController', 'SetSunlight', 0);
+            } else {
+                document.body.classList.remove('night-mode');
+                statusText.innerText = '（目前：白天）';
+                if (myUnityInstance != null) myUnityInstance.SendMessage('WeatherController', 'SetSunlight', 100);
+            }
+            checkSystemState();
+        }
+
+        document.getElementById("timeSlider").oninput = function () {
+            let hours = Math.floor(this.value / 60);
+            let mins = this.value % 60;
+            let timeStr = String(hours).padStart(2, '0') + ":" + String(mins).padStart(2, '0');
+            document.getElementById("timeValue").innerText = timeStr;
+            
+            // 自動日夜連動邏輯
+            let toggle = document.getElementById("daynightToggle");
+            let isCurrentlyNight = toggle.checked;
+            let shouldBeNight = (hours >= 18 || hours < 6); // 晚上6點到早上6點為夜晚
+            
+            if (isCurrentlyNight !== shouldBeNight) {
+                toggle.checked = shouldBeNight;
+                toggle.dispatchEvent(new Event("change")); // 觸發日夜切換動畫與邏輯
+            }
+
+            if (myUnityInstance != null) myUnityInstance.SendMessage('WeatherController', 'SetTime', parseFloat(this.value));
+            checkSystemState();
+        }
+
+        document.getElementById("rainSlider").oninput = function () {
+            let val = parseInt(this.value);
+            document.getElementById("rainValue").innerText = val + "%";
+            
+            // 跨越 70% 門檻時自動開啟模式 4，低於時自動關閉
+            if (val > 70 && lastRain <= 70) currentManualMode = 4;
+            else if (val <= 70 && lastRain > 70 && currentManualMode === 4) currentManualMode = 0;
+            lastRain = val;
+
+            if (myUnityInstance != null) myUnityInstance.SendMessage('WeatherController', 'SetRain', parseFloat(val));
+            checkSystemState();
+        }
+
+        document.getElementById("batterySlider").oninput = function () {
+            let val = parseInt(this.value);
+            document.getElementById("batteryValue").innerText = val + "%";
+
+            // 跨越 20% 門檻時自動開啟模式 5，高於時自動關閉
+            if (val < 20 && lastBattery >= 20) currentManualMode = 5;
+            else if (val >= 20 && lastBattery < 20 && currentManualMode === 5) currentManualMode = 0;
+            lastBattery = val;
+
+            let badge = document.getElementById("blynk-battery-badge");
+            if (badge) badge.innerText = val + "%";
+
+            if (myUnityInstance != null) myUnityInstance.SendMessage('WeatherController', 'SetBattery', parseFloat(val));
+            checkSystemState();
+        }
+    </script>
+</body>
+
+</html>
