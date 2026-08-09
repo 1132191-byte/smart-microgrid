@@ -91,6 +91,18 @@
             display: block;
         }
 
+        #loading-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            z-index: 20;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+
         /* ========================================== */
         /* 右側控制面板整體設定 */
         /* ========================================== */
@@ -375,6 +387,7 @@
 
     <!-- 左側：Unity 3D 畫面 -->
     <div id="unity-container">
+        <div id="loading-text">載入中... 0%</div>
         <canvas id="unity-canvas" tabindex="-1"></canvas>
     </div>
 
@@ -484,7 +497,10 @@
         var script = document.createElement("script");
         script.src = loaderUrl;
         script.onload = () => {
-            createUnityInstance(unityCanvas, config).then((unityInstance) => {
+            createUnityInstance(unityCanvas, config, (progress) => {
+                document.getElementById("loading-text").innerText = "3D 場景載入中... " + Math.round(progress * 100) + "%";
+            }).then((unityInstance) => {
+                document.getElementById("loading-text").style.display = "none";
                 myUnityInstance = unityInstance;
                 console.log("Unity 載入成功！");
                 
