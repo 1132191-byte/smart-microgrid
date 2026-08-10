@@ -411,7 +411,10 @@
 
         <!-- 區塊二：六個決策模式 -->
         <div class="panel-section">
-            <h3>系統模式切換</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px;">
+                <h3 style="margin: 0; border: none; padding: 0;">系統模式切換</h3>
+                <button id="autoModeBtn" onclick="toggleAutoMode()" style="background: #9b59b6; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; transition: 0.3s; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">▶ 自動展示</button>
+            </div>
             <div class="mode-grid">
                 <button class="mode-btn btn-yellow" onclick="setMode(1)">日間溢出利用</button>
                 <button class="mode-btn btn-green" onclick="setMode(2)">日間強制儲能</button>
@@ -687,6 +690,77 @@
 
             if (myUnityInstance != null) myUnityInstance.SendMessage('WeatherController', 'SetBattery', parseFloat(val));
             checkSystemState();
+        }
+
+        // --- 自動展示模式邏輯 ---
+        let isAutoMode = false;
+        let autoModeInterval = null;
+        let currentAutoIndex = 0;
+
+        function toggleAutoMode() {
+            let btn = document.getElementById("autoModeBtn");
+            isAutoMode = !isAutoMode;
+            
+            if (isAutoMode) {
+                btn.innerHTML = "⏹ 停止自動";
+                btn.style.background = "#e74c3c"; // 紅色
+                currentAutoIndex = 0;
+                runAutoModeStep(); // 立即執行第一步
+                autoModeInterval = setInterval(runAutoModeStep, 4000); // 每 4 秒切換一次
+            } else {
+                btn.innerHTML = "▶ 自動展示";
+                btn.style.background = "#9b59b6"; // 紫色
+                clearInterval(autoModeInterval);
+                
+                // 恢復為一般待機狀態
+                currentManualMode = 0;
+                let timeSlider = document.getElementById("timeSlider");
+                timeSlider.value = 720;
+                timeSlider.dispatchEvent(new Event("input"));
+                
+                let rainSlider = document.getElementById("rainSlider");
+                rainSlider.value = 0;
+                rainSlider.dispatchEvent(new Event("input"));
+                
+                let batterySlider = document.getElementById("batterySlider");
+                batterySlider.value = 50;
+                batterySlider.dispatchEvent(new Event("input"));
+                
+                checkSystemState();
+            }
+        }
+
+        function runAutoModeStep() {
+            // 定義每個模式需要的搖桿數值 (模式, 時間, 降雨機率, 電池電量)
+            const states = [
+                { mode: 1, time: 720, rain: 0, battery: 100 }, // 1: 日間溢出 (白天, 沒雨, 滿電)
+                { mode: 2, time: 720, rain: 0, battery: 50 },  // 2: 日間強制儲能 (白天, 沒雨, 50%電)
+                { mode: 3, time: 0,   rain: 0, battery: 50 },  // 3: 夜間放電 (晚上, 沒雨, 50%電)
+                { mode: 4, time: 720, rain: 90, battery: 50 }, // 4: 陰雨預警 (白天, 90%雨, 50%電)
+                { mode: 5, time: 720, rain: 0, battery: 10 },  // 5: 低電保護 (白天, 沒雨, 10%電)
+                { mode: 6, time: 720, rain: 0, battery: 50 }   // 6: 緊急用電 (白天, 沒雨, 50%電)
+            ];
+            
+            let state = states[currentAutoIndex];
+            
+            // 透過 dispatchEvent 模擬使用者滑動搖桿，這會自動觸發該對應的 UI 與 3D 場景變化
+            let timeSlider = document.getElementById("timeSlider");
+            timeSlider.value = state.time;
+            timeSlider.dispatchEvent(new Event("input"));
+            
+            let rainSlider = document.getElementById("rainSlider");
+            rainSlider.value = state.rain;
+            rainSlider.dispatchEvent(new Event("input"));
+            
+            let batterySlider = document.getElementById("batterySlider");
+            batterySlider.value = state.battery;
+            batterySlider.dispatchEvent(new Event("input"));
+            
+            // 強制設定目標模式 (避免被其他防呆邏輯洗掉)
+            currentManualMode = state.mode;
+            checkSystemState();
+            
+            currentAutoIndex = (currentAutoIndex + 1) % states.length;
         }
     </script>
 </body>
