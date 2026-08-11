@@ -1136,8 +1136,9 @@
                     }, 50);
                 }
 
-                // 針對 Mode 6 的雲端救援特效 (黑掉1秒後亮起強烈白光)
+                // 針對 Mode 6 的雲端救援特效 (黑掉1秒後亮起強烈光芒)
                 if (targetMode === 6) {
+                    // 將延遲從 1000ms 增加至 1500ms，確保絕對不會與 Unity 內部的 1 秒斷電動畫發生時間差衝突 (Race Condition)
                     setTimeout(() => {
                         if (myUnityInstance != null && currentManualMode === 6) {
                             myUnityInstance.SendMessage('WeatherController', 'SetAllLights', 'G,O,O,O,O');
@@ -1152,7 +1153,7 @@
                                 blynkBtn.style.boxShadow = "";
                             }, 300);
                         }
-                    }, 1000);
+                    }, 1500);
                 }
             }
         }
