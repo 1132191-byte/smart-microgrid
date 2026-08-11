@@ -1156,8 +1156,8 @@
             if (currentManualMode !== modeId) {
                 if (modeId === 1) { ts.value = 720; bs.value = 100; rs.value = 0; }
                 else if (modeId === 2) { ts.value = 720; bs.value = 50; rs.value = 0; }
-                else if (modeId === 3) { ts.value = 0; }
-                else if (modeId === 4) { ts.value = 0; rs.value = 90; }
+                else if (modeId === 3) { ts.value = 1080; }
+                else if (modeId === 4) { ts.value = 1080; rs.value = 90; }
                 else if (modeId === 5) { bs.value = 10; }
 
                 ts.dispatchEvent(new Event("input"));
