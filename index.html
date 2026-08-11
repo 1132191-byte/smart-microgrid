@@ -1187,11 +1187,11 @@
             if (isNight) {
                 document.body.classList.add('night-mode');
                 statusText.innerText = '（目前：夜晚）';
-                timeSlider.value = 0;
-                document.getElementById("timeValue").innerText = "00:00";
+                timeSlider.value = 1080;
+                document.getElementById("timeValue").innerText = "18:00";
                 if (myUnityInstance != null) {
                     myUnityInstance.SendMessage('WeatherController', 'SetSunlight', 0);
-                    myUnityInstance.SendMessage('WeatherController', 'SetTime', 0);
+                    myUnityInstance.SendMessage('WeatherController', 'SetTime', 1080);
                 }
             } else {
                 document.body.classList.remove('night-mode');
