@@ -1122,12 +1122,18 @@
 
             if (myUnityInstance != null) {
                 myUnityInstance.SendMessage('WeatherController', 'ChangeMode', targetMode);
-                // 加入 50ms 延遲，避免與 SetTime 等指令在同一幀內發生覆寫衝突導致黑屏
-                setTimeout(() => {
-                    if (myUnityInstance != null) {
-                        myUnityInstance.SendMessage('WeatherController', 'SetAllLights', lights);
-                    }
-                }, 50);
+                
+                if (targetMode === 6) {
+                    // Mode 6 有自帶的 1 秒後開燈特效，直接同步發送避免 timeout 交叉干擾
+                    myUnityInstance.SendMessage('WeatherController', 'SetAllLights', lights);
+                } else {
+                    // 加入 50ms 延遲，避免與 SetTime 等指令在同一幀內發生覆寫衝突導致黑屏
+                    setTimeout(() => {
+                        if (myUnityInstance != null) {
+                            myUnityInstance.SendMessage('WeatherController', 'SetAllLights', lights);
+                        }
+                    }, 50);
+                }
 
                 // 針對 Mode 6 的雲端救援特效 (黑掉1秒後亮起強烈白光)
                 if (targetMode === 6) {
