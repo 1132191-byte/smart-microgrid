@@ -982,6 +982,7 @@
         var blynkPowerOn = true;
         var lastBattery = 50;
         var lastRain = 0;
+        var isUpdatingState = false; // 用於阻擋 slider 連鎖觸發 checkSystemState
 
         function checkSystemState(manualClick = 0) {
             let isDay = !document.getElementById("daynightToggle").checked;
@@ -1171,9 +1172,11 @@
                 else if (modeId === 4) { ts.value = 1080; rs.value = 90; }
                 else if (modeId === 5) { bs.value = 10; }
 
+                isUpdatingState = true;
                 ts.dispatchEvent(new Event("input"));
                 rs.dispatchEvent(new Event("input"));
                 bs.dispatchEvent(new Event("input"));
+                isUpdatingState = false;
 
                 // 強制進入該模式，繞過原始單純的防呆機制
                 currentManualMode = modeId;
@@ -1214,7 +1217,7 @@
                     myUnityInstance.SendMessage('WeatherController', 'SetTime', 720);
                 }
             }
-            checkSystemState();
+            if (!isUpdatingState) checkSystemState();
         }
 
         document.getElementById("timeSlider").oninput = function () {
@@ -1234,7 +1237,7 @@
             }
 
             if (myUnityInstance != null) myUnityInstance.SendMessage('WeatherController', 'SetTime', parseFloat(this.value));
-            checkSystemState();
+            if (!isUpdatingState) checkSystemState();
         }
 
         document.getElementById("rainSlider").oninput = function () {
@@ -1247,7 +1250,7 @@
             lastRain = val;
 
             if (myUnityInstance != null) myUnityInstance.SendMessage('WeatherController', 'SetRain', parseFloat(val));
-            checkSystemState();
+            if (!isUpdatingState) checkSystemState();
         }
 
         document.getElementById("batterySlider").oninput = function () {
@@ -1263,7 +1266,7 @@
             if (badge) badge.innerText = val + "%";
 
             if (myUnityInstance != null) myUnityInstance.SendMessage('WeatherController', 'SetBattery', parseFloat(val));
-            checkSystemState();
+            if (!isUpdatingState) checkSystemState();
         }
 
         // --- 自動展示模式邏輯 ---
@@ -1288,6 +1291,8 @@
 
                 // 恢復為一般待機狀態
                 currentManualMode = 0;
+                
+                isUpdatingState = true;
                 let timeSlider = document.getElementById("timeSlider");
                 timeSlider.value = 720;
                 timeSlider.dispatchEvent(new Event("input"));
@@ -1299,6 +1304,7 @@
                 let batterySlider = document.getElementById("batterySlider");
                 batterySlider.value = 50;
                 batterySlider.dispatchEvent(new Event("input"));
+                isUpdatingState = false;
 
                 checkSystemState();
             }
@@ -1317,6 +1323,7 @@
 
             let state = states[currentAutoIndex];
 
+            isUpdatingState = true;
             // 透過 dispatchEvent 模擬使用者滑動搖桿，這會自動觸發該對應的 UI 與 3D 場景變化
             let timeSlider = document.getElementById("timeSlider");
             timeSlider.value = state.time;
@@ -1329,6 +1336,7 @@
             let batterySlider = document.getElementById("batterySlider");
             batterySlider.value = state.battery;
             batterySlider.dispatchEvent(new Event("input"));
+            isUpdatingState = false;
 
             // 強制設定目標模式 (避免被其他防呆邏輯洗掉)
             currentManualMode = state.mode;
