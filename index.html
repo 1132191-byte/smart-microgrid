@@ -1298,8 +1298,8 @@
             const states = [
                 { mode: 1, time: 720, rain: 0, battery: 100 }, // 1: 日間溢出 (白天, 沒雨, 滿電)
                 { mode: 2, time: 720, rain: 0, battery: 50 },  // 2: 日間強制儲能 (白天, 沒雨, 50%電)
-                { mode: 3, time: 0, rain: 0, battery: 50 },  // 3: 夜間放電 (晚上, 沒雨, 50%電)
-                { mode: 4, time: 0, rain: 90, battery: 50 }, // 4: 陰雨預警 (晚上, 90%雨, 50%電)
+                { mode: 3, time: 1080, rain: 0, battery: 50 },  // 3: 夜間放電 (晚上, 沒雨, 50%電)
+                { mode: 4, time: 1080, rain: 90, battery: 50 }, // 4: 陰雨預警 (晚上, 90%雨, 50%電)
                 { mode: 5, time: 720, rain: 0, battery: 10 },  // 5: 低電保護 (白天, 沒雨, 10%電)
                 { mode: 6, time: 720, rain: 0, battery: 50 }   // 6: 緊急用電 (白天, 沒雨, 50%電)
             ];
