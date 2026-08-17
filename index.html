@@ -15,12 +15,36 @@
             display: flex;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
-            padding: 20px;
+            padding: 70px 20px 20px 20px;
             background-color: #f4f6f9;
             height: 100vh;
             /* 讓畫面剛好滿版，不出現捲軸 */
             gap: 20px;
             transition: background-color 0.6s ease;
+        }
+
+        .main-title {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 28px;
+            font-weight: bold;
+            color: #2c3e50;
+            z-index: 100;
+            letter-spacing: 2px;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.1);
+            transition: color 0.6s ease, text-shadow 0.6s ease;
+        }
+
+        body.night-mode .main-title {
+            color: #e0e0e0;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+        }
+
+        body.rain-mode .main-title {
+            color: #f8f9fa;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
         }
 
         /* ========================================== */
@@ -198,6 +222,20 @@
             opacity: 1;
             animation-play-state: running;
         }
+
+        /* 緊急用電模式斷電疊層 */
+        #emergency-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0);
+            pointer-events: none;
+            z-index: 6;
+            transition: background 0.3s ease;
+        }
+        #emergency-overlay.blackout {
+            background: rgba(0, 0, 0, 0.92);
+        }
+
 
         @keyframes rainAnimation {
             0% { background-position: 0px 0px; }
@@ -491,6 +529,18 @@
 
         body.rain-mode .panel-section {
             background-color: #eaf0f6;
+            color: #333 !important;
+        }
+        
+        body.rain-mode .panel-section h3 {
+            color: #333 !important;
+            border-bottom-color: #ccc !important;
+        }
+        
+        body.rain-mode .slider-group label,
+        body.rain-mode .daynight-toggle-group .toggle-label,
+        body.rain-mode .daynight-toggle-group .toggle-status {
+            color: #555 !important;
         }
 
         @keyframes emergencyFlash {
@@ -541,7 +591,8 @@
             background: #2c3e50;
             border-radius: 10px;
             padding: 15px;
-            margin-top: 15px;
+            margin-top: 5px;
+            margin-bottom: 25px;
             color: white;
             box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
         }
@@ -595,10 +646,61 @@
             border-left: 5px solid #95a5a6;
             transition: 0.3s;
         }
+
+        #systemStatusText {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 25;
+            max-width: none;
+            white-space: nowrap;
+            margin-top: 0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            background: rgba(248, 249, 250, 0.95);
+            pointer-events: none; /* 讓滑鼠點擊穿透，不影響 3D 互動 */
+        }
+
+        /* ========================================== */
+        /* 新增：情境轉場特效 Overlay */
+        /* ========================================== */
+        #mode-transition-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 30;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease, background-color 0.4s ease;
+        }
+
+        #mode-transition-overlay.show {
+            opacity: 1;
+        }
+
+        #mode-transition-text {
+            color: white;
+            font-size: 36px;
+            font-weight: bold;
+            text-align: center;
+            text-shadow: 0 4px 12px rgba(0,0,0,0.8);
+            transform: scale(0.8);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            line-height: 1.4;
+        }
+
+        #mode-transition-overlay.show #mode-transition-text {
+            transform: scale(1);
+        }
     </style>
 </head>
 
 <body>
+
+    <!-- 頁面大標題 -->
+    <div class="main-title">從發電到儲電：智慧太陽能新策略</div>
 
     <!-- 新增：左側選單 -->
     <div id="sidebar">
@@ -714,6 +816,17 @@
             <div id="loading-text">載入中... 0%</div>
             <canvas id="unity-canvas" tabindex="-1"></canvas>
             <div id="rain-overlay"></div>
+            <!-- 緊急用電模式：純 CSS 斷電疊層 (不觸碰 Unity 燈光，避免崩潰) -->
+            <div id="emergency-overlay"></div>
+            <!-- 新增：全畫面情境轉場特效疊層 -->
+            <div id="mode-transition-overlay">
+                <div id="mode-transition-text"></div>
+            </div>
+            
+            <!-- 白話文解釋與系統狀態 (移至此處) -->
+            <div id="systemStatusText" class="mode-description">
+                💡 系統狀態：一般<strong style='color:#e74c3c;'>待機模式</strong>，目前主要由傳統電網供電。
+            </div>
         </div>
 
         <!-- 右側：控制面板 -->
@@ -743,26 +856,6 @@
                         style="background: #9b59b6; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; transition: 0.3s; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">▶
                         自動展示</button>
                 </div>
-                <div class="mode-grid">
-                    <button class="mode-btn btn-yellow" onclick="setMode(1)">日間溢出利用<br><span
-                            style="font-size:11px; font-weight:normal; color:#555;">(綠能滿載，家電全開)</span></button>
-                    <button class="mode-btn btn-green" onclick="setMode(2)">日間強制儲能<br><span
-                            style="font-size:11px; font-weight:normal; color:#555;">(優先充電，暫停耗電)</span></button>
-                    <button class="mode-btn btn-yellow" onclick="setMode(3)">夜間放電模式<br><span
-                            style="font-size:11px; font-weight:normal; color:#555;">(太陽下山，電池供電)</span></button>
-                    <button class="mode-btn btn-green" onclick="setMode(4)">陰雨預警模式<br><span
-                            style="font-size:11px; font-weight:normal; color:#555;">(預防下雨，保留電量)</span></button>
-                    <button class="mode-btn btn-yellow" onclick="setMode(5)">低電保護模式<br><span
-                            style="font-size:11px; font-weight:normal; color:#555;">(快沒電了，強制斷電)</span></button>
-                    <button class="mode-btn btn-green" onclick="setMode(6)">緊急用電模式<br><span
-                            style="font-size:11px; font-weight:normal; color:#555;">(停電應急，僅供照明)</span></button>
-                </div>
-
-                <div style="text-align: center; margin-top: 5px; margin-bottom: 8px; font-size: 12px; color: #555;">
-                    <span style="color: #27ae60; font-weight: bold;">● 綠燈</span>(太陽能) &nbsp;&nbsp; <span
-                        style="color: #7f8c8d; font-weight: bold;">● 白燈</span>(傳統電網)
-                </div>
-
                 <!-- 新增：能源流向動態面板 -->
                 <div class="power-flow-board">
                     <div style="font-size: 12px; margin-bottom: 10px; color: #aaa;">目前的電力來源與流向</div>
@@ -782,15 +875,33 @@
                             style="font-size: 24px;">🏠</span><br>家庭用電</div>
                 </div>
 
-                <!-- 白話文解釋與系統狀態 -->
-                <div id="systemStatusText" class="mode-description">
-                    <strong>💡 狀態：一般待機模式</strong><br>目前主要由傳統電網供電，一切正常。
+                <div style="text-align: center; margin-top: -10px; margin-bottom: 25px; font-size: 12px; opacity: 0.8;">
+                    <span style="color: #27ae60; font-weight: bold;">● 綠燈</span>(太陽能) &nbsp;&nbsp; <span
+                        style="color: #7f8c8d; font-weight: bold;">● 白燈</span>(傳統電網)
                 </div>
+
+                <div class="mode-grid">
+                    <button class="mode-btn btn-yellow" onclick="setMode(1)">日間溢出利用<br><span
+                            style="font-size:11px; font-weight:normal; opacity: 0.8;">(綠能滿載，家電全開)</span></button>
+                    <button class="mode-btn btn-green" onclick="setMode(2)">日間強制儲能<br><span
+                            style="font-size:11px; font-weight:normal; opacity: 0.8;">(優先充電，暫停耗電)</span></button>
+                    <button class="mode-btn btn-yellow" onclick="setMode(3)">夜間放電模式<br><span
+                            style="font-size:11px; font-weight:normal; opacity: 0.8;">(太陽下山，電池供電)</span></button>
+                    <button class="mode-btn btn-green" onclick="setMode(4)">陰雨預警模式<br><span
+                            style="font-size:11px; font-weight:normal; opacity: 0.8;">(預防下雨，保留電量)</span></button>
+                    <button class="mode-btn btn-yellow" onclick="setMode(5)">低電保護模式<br><span
+                            style="font-size:11px; font-weight:normal; opacity: 0.8;">(快沒電了，強制斷電)</span></button>
+                    <button class="mode-btn btn-green" onclick="setMode(6)">緊急用電模式<br><span
+                            style="font-size:11px; font-weight:normal; opacity: 0.8;">(停電應急，僅供照明)</span></button>
+                </div>
+
+
+                <!-- 系統提示詞已移至 3D 畫面左上角 -->
             </div>
 
             <!-- 區塊三：環境參數模擬 -->
             <div class="panel-section">
-                <h3>環境參數模擬</h3>
+                <h3>環境參數模擬 <span id="currentModeDisplay" style="font-size: 14px; font-weight: normal; color: #888; float: right; margin-top: 5px;">[目前：待機模式]</span></h3>
 
                 <div class="daynight-toggle-group">
                     <div>
@@ -979,6 +1090,7 @@
 
         // --- 智慧微電網核心邏輯 (State Machine) ---
         var currentManualMode = 0; // 紀錄使用者目前點擊的模式 (0代表無)
+        var lastActiveMode = 0; // 紀錄上一次實際生效的模式，用來觸發全畫面特效
         var blynkPowerOn = true;
         var lastBattery = 50;
         var lastRain = 0;
@@ -1008,6 +1120,12 @@
 
             let targetMode = currentManualMode;
 
+            // 如果模式有實質改變，觸發全畫面特效
+            if (targetMode !== lastActiveMode) {
+                triggerModeTransition(targetMode);
+                lastActiveMode = targetMode;
+            }
+
             // --- UI 亮燈與按鈕狀態更新 ---
             let blynkBtn = document.getElementById('blynk-on-btn');
             if (targetMode === 6) {
@@ -1034,6 +1152,19 @@
                 }
             });
 
+            let modeNames = ["待機模式", "日間溢出利用模式", "日間強制儲能模式", "夜間放電模式", "陰雨預警模式", "低電保護模式", "緊急用電模式"];
+            let currentModeDisplay = document.getElementById("currentModeDisplay");
+            if (currentModeDisplay) {
+                currentModeDisplay.innerHTML = "[目前：" + (modeNames[targetMode] || "待機模式") + "]";
+                if(targetMode > 0) {
+                    currentModeDisplay.style.color = "#e74c3c";
+                    currentModeDisplay.style.fontWeight = "bold";
+                } else {
+                    currentModeDisplay.style.color = "#888";
+                    currentModeDisplay.style.fontWeight = "normal";
+                }
+            }
+
             // --- 更新系統狀態提示文字與視覺特效 ---
             let statusBox = document.getElementById("systemStatusText");
             let uiBody = document.body;
@@ -1043,6 +1174,11 @@
             uiBody.classList.remove("rain-mode");
             unityContainer.classList.remove("emergency-active");
             document.body.classList.remove("low-battery-active");
+            // 緊急用電 CSS 疊層重置
+            let emergencyOverlay = document.getElementById("emergency-overlay");
+            if (emergencyOverlay) {
+                emergencyOverlay.classList.remove("blackout", "emergency-light");
+            }
 
             // 能源面板重置
             let nodes = ["node-solar", "node-battery", "node-grid"];
@@ -1051,14 +1187,14 @@
             arrows.forEach(id => document.getElementById(id).classList.remove("active"));
 
             if (targetMode === 5) {
-                statusBox.innerHTML = "💡 系統提示：電池電量過低 (&lt;20%)，已啟動低電保護，全面切換為傳統電網。";
+                statusBox.innerHTML = "💡 系統提示：晚上時電池電量過低 (&lt;20%)，已啟動<strong style='color:#e74c3c;'>低電保護模式</strong>，全面切換為傳統電網。";
                 statusBox.style.borderLeftColor = "#e74c3c"; // 紅色
                 statusBox.style.background = ""; // 清除背景色，恢復 CSS 預設
                 document.body.classList.add("low-battery-active");
                 document.getElementById("node-grid").classList.add("active");
                 document.getElementById("arrow-grid").classList.add("active");
             } else if (targetMode === 4) {
-                statusBox.innerHTML = "💡 系統提示：陰雨機率過高 (&gt;70%)，保留主要照明，其餘切換為傳統電網。";
+                statusBox.innerHTML = "💡 系統提示：啟動<strong style='color:#e74c3c;'>陰雨預警模式</strong>，晚上時降雨機率過高 (&gt;70%)，保留主要照明，其餘切換為傳統電網。";
                 statusBox.style.borderLeftColor = "#f39c12"; // 橘色
                 statusBox.style.background = "";
                 uiBody.classList.add("rain-mode");
@@ -1067,7 +1203,7 @@
                 document.getElementById("arrow-grid").classList.add("active");
                 document.getElementById("arrow-battery").classList.add("active");
             } else if (targetMode === 1) {
-                statusBox.innerHTML = "💡 系統提示：太陽能持續供電，因電池電量已達 90% 以上，啟動日間溢出利用，將儲能電池裡的電提供給家庭使用。";
+                statusBox.innerHTML = "💡 系統提示：太陽能持續供電，因電池電量已達 90% 以上，啟動<strong style='color:#e74c3c;'>日間溢出利用模式</strong>，將儲能電池裡多餘的電提供給家庭使用。";
                 statusBox.style.borderLeftColor = "#2ecc71"; // 綠色
                 statusBox.style.background = "";
                 document.getElementById("node-solar").classList.add("active");
@@ -1075,7 +1211,7 @@
                 document.getElementById("arrow-solar").classList.add("active");
                 document.getElementById("arrow-battery").classList.add("active"); // 新增電池流向家庭的箭頭
             } else if (targetMode === 2) {
-                statusBox.innerHTML = "💡 系統提示：日間充電中，已啟動強制儲能，全面使用傳統電網。";
+                statusBox.innerHTML = "💡 系統提示：日間充電中，已啟動<strong style='color:#e74c3c;'>日間強制儲能模式</strong>，全面使用傳統電網。";
                 statusBox.style.borderLeftColor = "#3498db"; // 藍色
                 statusBox.style.background = "";
                 document.getElementById("node-grid").classList.add("active");
@@ -1085,20 +1221,46 @@
                 document.getElementById("node-battery").classList.add("active");
                 document.getElementById("arrow-solar").classList.add("active");
             } else if (targetMode === 3) {
-                statusBox.innerHTML = "💡 系統提示：夜間放電模式，全面使用太陽能供電。";
+                statusBox.innerHTML = "💡 系統提示：啟動<strong style='color:#e74c3c;'>夜間放電模式</strong>，全面使用儲能電池供電。";
                 statusBox.style.borderLeftColor = "#2ecc71"; // 綠色
                 statusBox.style.background = "";
                 document.getElementById("node-battery").classList.add("active");
                 document.getElementById("arrow-battery").classList.add("active");
             } else if (targetMode === 6) {
-                statusBox.innerHTML = "💡 系統提示：緊急用電模式啟動！僅保留重要照明。";
+                statusBox.innerHTML = "💡 系統提示：<strong style='color:#e74c3c;'>緊急用電模式</strong>啟動！僅保留重要照明。";
                 statusBox.style.borderLeftColor = "#e74c3c"; // 紅色
                 statusBox.style.background = "";
                 unityContainer.classList.add("emergency-active");
                 document.getElementById("node-battery").classList.add("active");
                 document.getElementById("arrow-battery").classList.add("active");
+                // CSS 疊層模擬斷電視覺效果 (黑屏遮住 Unity 畫面轉換過程)
+                if (emergencyOverlay) {
+                    emergencyOverlay.classList.add("blackout");
+                    // 趁 CSS 黑屏遮住時，悄悄讓 Unity 把燈光切換好 (不送 ChangeMode 避免崩潰)
+                    setTimeout(() => {
+                        if (myUnityInstance != null) {
+                            myUnityInstance.SendMessage('WeatherController', 'SetAllLights', 'G,O,O,O,O');
+                        }
+                    }, 200);
+                    // 1.5 秒後移除遮罩，顯示 Unity 已準備好的壁燈場景
+                    setTimeout(() => {
+                        if (currentManualMode === 6 && emergencyOverlay) {
+                            emergencyOverlay.classList.remove("blackout");
+                        }
+                        // Blynk ON 按鈕閃爍
+                        let blynkBtn = document.getElementById('blynk-on-btn');
+                        if (blynkBtn) {
+                            blynkBtn.style.transform = "scale(1.2)";
+                            blynkBtn.style.boxShadow = "0 0 15px #2ecc71";
+                            setTimeout(() => {
+                                blynkBtn.style.transform = "";
+                                blynkBtn.style.boxShadow = "";
+                            }, 300);
+                        }
+                    }, 1500);
+                }
             } else {
-                statusBox.innerHTML = "💡 系統狀態：一般待機模式，目前主要由傳統電網供電。";
+                statusBox.innerHTML = "💡 系統狀態：一般<strong style='color:#e74c3c;'>待機模式</strong>，目前主要由傳統電網供電。";
                 statusBox.style.borderLeftColor = "#95a5a6"; // 灰色
                 statusBox.style.background = "";
                 document.getElementById("node-grid").classList.add("active");
@@ -1122,45 +1284,65 @@
             }
 
             if (myUnityInstance != null) {
-                myUnityInstance.SendMessage('WeatherController', 'ChangeMode', targetMode);
-                
-                if (targetMode === 6) {
-                    // Mode 6 有自帶的 1 秒後開燈特效，直接同步發送避免 timeout 交叉干擾
-                    myUnityInstance.SendMessage('WeatherController', 'SetAllLights', lights);
-                } else {
-                    // 加入 50ms 延遲，避免與 SetTime 等指令在同一幀內發生覆寫衝突導致黑屏
+                if (targetMode !== 6) {
+                    // 一般模式：發送 ChangeMode，並在 50ms 後送燈光
+                    myUnityInstance.SendMessage('WeatherController', 'ChangeMode', targetMode);
                     setTimeout(() => {
                         if (myUnityInstance != null) {
                             myUnityInstance.SendMessage('WeatherController', 'SetAllLights', lights);
                         }
                     }, 50);
                 }
-
-                // 針對 Mode 6 的雲端救援特效 (黑掉1秒後亮起強烈光芒)
-                if (targetMode === 6) {
-                    // 將延遲從 1000ms 增加至 1500ms，確保絕對不會與 Unity 內部的 1 秒斷電動畫發生時間差衝突 (Race Condition)
-                    setTimeout(() => {
-                        if (myUnityInstance != null && currentManualMode === 6) {
-                            myUnityInstance.SendMessage('WeatherController', 'SetAllLights', 'G,O,O,O,O');
-                        }
-                        // 手機介面模擬動作 (讓 ON 按鈕閃爍一下)
-                        let blynkBtn = document.getElementById('blynk-on-btn');
-                        if (blynkBtn) {
-                            blynkBtn.style.transform = "scale(1.2)";
-                            blynkBtn.style.boxShadow = "0 0 15px #2ecc71";
-                            setTimeout(() => {
-                                blynkBtn.style.transform = "";
-                                blynkBtn.style.boxShadow = "";
-                            }, 300);
-                        }
-                    }, 1500);
-                }
             }
+        }
+
+        let transitionTimeout = null;
+        function triggerModeTransition(modeId) {
+            const overlay = document.getElementById('mode-transition-overlay');
+            const textEl = document.getElementById('mode-transition-text');
+            if (!overlay || !textEl) return;
+
+            let text = "";
+            let bgColor = "rgba(0, 0, 0, 0.7)"; 
+            
+            if (modeId === 1) {
+                text = "☀️ 日間溢出利用啟動<br><span style='font-size:24px;color:#f1c40f'>太陽能滿載供電</span>";
+                bgColor = "rgba(241, 196, 15, 0.35)"; // 黃色 (調淡)
+            } else if (modeId === 2) {
+                text = "🔋 日間強制儲能啟動<br><span style='font-size:24px;color:#ecf0f1'>優先充電，切換市電</span>";
+                bgColor = "rgba(41, 128, 185, 0.35)"; // 藍色 (調淡)
+            } else if (modeId === 3) {
+                text = "🌙 夜間放電啟動<br><span style='font-size:24px;color:#2ecc71'>改由電池供電</span>";
+                bgColor = "rgba(44, 62, 80, 0.55)"; // 深藍色 (保留一點夜晚感)
+            } else if (modeId === 4) {
+                text = "🌧️ 陰雨預警啟動<br><span style='font-size:24px;color:#ecf0f1'>預防下雨，切換市電，僅保留照明</span>";
+                bgColor = "rgba(127, 140, 141, 0.4)"; // 灰色 (調淡)
+            } else if (modeId === 5) {
+                text = "⚠️ 低電保護啟動<br><span style='font-size:24px;color:#ecf0f1'>電池見底，強制斷電</span>";
+                bgColor = "rgba(211, 84, 0, 0.4)"; // 橘紅色 (調淡)
+            } else if (modeId === 6) {
+                text = "🚨 系統緊急介入<br><span style='font-size:24px;color:#f1c40f'>瞬間切換備用照明</span>";
+                bgColor = "rgba(192, 57, 43, 0.4)"; // 深紅色 (調淡)
+            } else {
+                text = "🔄 一般待機模式<br><span style='font-size:24px;color:#bdc3c7'>使用傳統電網供電</span>";
+                bgColor = "rgba(0, 0, 0, 0.4)"; // 黑色 (調淡)
+            }
+
+            textEl.innerHTML = text;
+            overlay.style.backgroundColor = bgColor;
+            
+            overlay.classList.add('show');
+            
+            if (transitionTimeout) clearTimeout(transitionTimeout);
+            
+            transitionTimeout = setTimeout(() => {
+                overlay.classList.remove('show');
+            }, 1800);
         }
 
         // --- 使用者介面互動事件 ---
         function setMode(modeId) {
-            if (isAutoMode) return; // 自動展示時避免干擾
+            if (isAutoMode) toggleAutoMode(); // 若在自動展示中被點擊，則中斷自動展示並切換
 
             let ts = document.getElementById("timeSlider");
             let rs = document.getElementById("rainSlider");
@@ -1208,6 +1390,12 @@
                     myUnityInstance.SendMessage('WeatherController', 'SetSunlight', 0);
                     myUnityInstance.SendMessage('WeatherController', 'SetTime', 1080);
                 }
+                
+                // 進入夜晚，若沒有下雨且電量足夠，自動切換至模式 3 (夜間放電)
+                let rainProb = parseInt(document.getElementById("rainSlider").value);
+                let battery = parseInt(document.getElementById("batterySlider").value);
+                if (rainProb <= 70 && battery >= 20) currentManualMode = 3;
+                
             } else {
                 document.body.classList.remove('night-mode');
                 statusText.innerText = '（目前：白天）';
@@ -1216,6 +1404,14 @@
                 if (myUnityInstance != null) {
                     myUnityInstance.SendMessage('WeatherController', 'SetSunlight', 100);
                     myUnityInstance.SendMessage('WeatherController', 'SetTime', 720);
+                }
+                
+                // 進入白天，根據電量自動切換至模式 1 或 2
+                let battery = parseInt(document.getElementById("batterySlider").value);
+                let rainProb = parseInt(document.getElementById("rainSlider").value);
+                if (rainProb <= 70) {
+                    if (battery >= 90) currentManualMode = 1;
+                    else if (battery >= 20) currentManualMode = 2;
                 }
             }
             if (!isUpdatingState) checkSystemState();
@@ -1257,10 +1453,20 @@
         document.getElementById("batterySlider").oninput = function () {
             let val = parseInt(this.value);
             document.getElementById("batteryValue").innerText = val + "%";
+            let isDay = !document.getElementById("daynightToggle").checked;
 
             // 跨越 20% 門檻時自動開啟模式 5，高於時自動關閉
             if (val < 20 && lastBattery >= 20) currentManualMode = 5;
             else if (val >= 20 && lastBattery < 20 && currentManualMode === 5) currentManualMode = 0;
+            
+            // 白天時，電池跨越 90% 門檻自動開啟模式 1
+            if (isDay && val >= 90 && lastBattery < 90) currentManualMode = 1;
+            else if (isDay && val < 90 && lastBattery >= 90 && currentManualMode === 1) currentManualMode = 0;
+
+            // 白天時，電池進入 20~89% 區間自動開啟模式 2
+            if (isDay && val >= 20 && val < 90 && (lastBattery < 20 || lastBattery >= 90)) currentManualMode = 2;
+            else if (isDay && (val < 20 || val >= 90) && currentManualMode === 2) currentManualMode = 0;
+
             lastBattery = val;
 
             let badge = document.getElementById("blynk-battery-badge");
